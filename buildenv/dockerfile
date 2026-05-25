@@ -1,0 +1,14 @@
+FROM randomdude/gcc-cross-x86_64-elf
+
+RUN apt-get update 
+RUN apt-get upgrade -y
+RUN apt-get install -y bc bison build-essential cpio curl flex grub-common grub-pc-bin libelf-dev libncurses-dev libssl-dev make mtools qemu-system-x86 xorriso xz-utils
+RUN apt-get install -y git wget
+RUN apt-get install -y nasm
+RUN apt-get install -y gzip
+RUN apt-get install -y ca-certificates
+RUN apt-get install -y tar
+RUN apt-get install -y file
+
+VOLUME /root/env
+WORKDIR /root/env

@@ -1,0 +1,7 @@
+# Ignore build artifacts
+/dist/
+/build/
+*.iso
+*.bin
+*.o
+targets/*/iso/boot/*.bin
