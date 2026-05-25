@@ -19,6 +19,5 @@ Run (example)
 Notes
 - The build downloads Linux source on first run, builds a bzImage, and packages a tiny initramfs so the ISO boots into Linux without a disk image.
 - GRUB offers normal, verbose, and debug entries. Debug enables extra kernel logging and serial console output.
-- The initramfs includes an interactive shell with built-in `help`, `ls`, `cat`, `cd`, `pwd`, `uname`, `reboot`, and `poweroff` commands.
+- The initramfs boots into bash and provides a `c` command that runs a sample static C program.
 - The old custom-kernel sources remain in the tree for reference, but they are no longer part of the build.
-# my-distro-linux-base-kernel

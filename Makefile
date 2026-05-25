@@ -2,12 +2,17 @@ SHELL := /bin/bash
 
 LINUX_VERSION ?= 6.18.33
 LINUX_URL := https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-$(LINUX_VERSION).tar.xz
+HOST_BASH := $(shell command -v bash)
 
 LINUX_SOURCE_DIR := build/linux-src
 LINUX_BUILD_DIR := build/linux-build
+INITRAMFS_STAGE_DIR := build/initramfs/stage
 INITRAMFS_ROOT_DIR := build/initramfs/rootfs
 INITRAMFS_IMAGE := build/initramfs/initramfs.cpio.gz
-INIT_PROGRAM := build/initramfs/init
+INIT_BASH := $(INITRAMFS_STAGE_DIR)/bin/bash
+INIT_C_DEMO := $(INITRAMFS_STAGE_DIR)/usr/local/bin/hello-c
+INIT_BASHRC := $(INITRAMFS_STAGE_DIR)/root/.bashrc
+INIT_SCRIPT := $(INITRAMFS_STAGE_DIR)/init
 
 ISO_SOURCE_DIR := targets/x86_64/iso
 ISO_STAGE_DIR := build/iso/x86_64/iso
@@ -33,14 +38,34 @@ $(LINUX_BUILD_DIR)/.config: $(LINUX_SOURCE_DIR)/.stamp
 $(KERNEL_IMAGE): $(LINUX_BUILD_DIR)/.config
 	$(MAKE) -C $(LINUX_SOURCE_DIR) O=$(abspath $(LINUX_BUILD_DIR)) -j$$(nproc) bzImage
 
-$(INIT_PROGRAM): src/initramfs/init.c
+$(INIT_C_DEMO): src/initramfs/hello.c
 	mkdir -p $(dir $@)
 	cc -Os -static -nostdlib -fno-pie -no-pie -fno-stack-protector -ffreestanding -Wl,-e,_start -Wl,--build-id=none $< -o $@
 
-$(INITRAMFS_IMAGE): $(INIT_PROGRAM)
+$(INIT_BASHRC): src/initramfs/bashrc
+	mkdir -p $(dir $@)
+	cp $< $@
+
+$(INIT_SCRIPT): src/initramfs/init.sh $(INIT_BASHRC)
+	mkdir -p $(dir $@)
+	cp $< $@
+	chmod +x $@
+
+$(INIT_BASH): Makefile
+	mkdir -p $(dir $@)
+	cp $(HOST_BASH) $@
+	ldd $(HOST_BASH) | awk '{ for (i = 1; i <= NF; i++) if ($$i ~ /^\//) print $$i }' | sort -u | while read -r lib; do \
+		dest="$(INITRAMFS_STAGE_DIR)$$lib"; \
+		mkdir -p "$$(dirname "$$dest")"; \
+		cp "$$lib" "$$dest"; \
+	done
+	ln -sf bash $(INITRAMFS_STAGE_DIR)/bin/sh
+
+$(INITRAMFS_IMAGE): $(INIT_SCRIPT) $(INIT_BASH) $(INIT_C_DEMO)
 	rm -rf $(INITRAMFS_ROOT_DIR)
+	mkdir -p $(INITRAMFS_ROOT_DIR)
+	cp -a $(INITRAMFS_STAGE_DIR)/. $(INITRAMFS_ROOT_DIR)/
 	mkdir -p $(INITRAMFS_ROOT_DIR)/proc $(INITRAMFS_ROOT_DIR)/sys $(INITRAMFS_ROOT_DIR)/dev $(INITRAMFS_ROOT_DIR)/tmp $(INITRAMFS_ROOT_DIR)/mnt
-	cp $(INIT_PROGRAM) $(INITRAMFS_ROOT_DIR)/init
 	mkdir -p $(dir $@)
 	cd $(INITRAMFS_ROOT_DIR) && find . | cpio -o -H newc | gzip -9 > $(abspath $@)
 
